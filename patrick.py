@@ -14,7 +14,7 @@ import os
 AudioSegment.converter = "/usr/bin/ffmpeg"  # Typical path on Streamlit Cloud
 
 # --- Configuration ---
-APP_TITLE = "Patrick's Fun Games!"
+APP_TITLE = "Patrick's Speech Games!"
 YOUR_NAME = "Patrick"
 CHEER_SOUND_FILENAME = "cheer.wav"
 
