@@ -1,48 +1,34 @@
-# kids_games_streamlit_v5.py
-# Updated for Streamlit Cloud: No PyAudio, browser mic support via st.audio_input
-
+# kids_games.py - updated for st.audio_input
 import streamlit as st
 import random
 import os
-import io
-import speech_recognition as sr
+from pydub import AudioSegment
+from io import BytesIO
 
-# --- Configuration ---
+# Optional: set path if ffmpeg isn't auto-detected
+AudioSegment.converter = "/usr/bin/ffmpeg"  # adjust if needed
+
 APP_TITLE = "Patrick's Speech Games!"
 YOUR_NAME = "Patrick"
 CHEER_SOUND_FILENAME = "cheer.wav"
 
 st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# --- Status Initialization ---
-initialization_status = []
-
-# Text-to-Speech using pyttsx3 (optional)
+# TTS setup
 TTS_ENABLED = False
+tts_engine = None
 try:
     import pyttsx3
     tts_engine = pyttsx3.init()
     TTS_ENABLED = True
-    initialization_status.append(("success", "✅ Text-to-Speech Ready"))
-except Exception as e:
-    initialization_status.append(("warning", f"⚠️ TTS Error: {e}"))
+except Exception:
+    pass
 
-# Speech recognition setup
-SPEECH_REC_ENABLED = True
-recognizer = sr.Recognizer()
-initialization_status.append(("success", "✅ Speech Recognition Ready"))
-
-# Cheer sound setup (optional)
 sound_file_path = os.path.join(os.path.dirname(__file__), CHEER_SOUND_FILENAME)
 CHEER_SOUND_EXISTS = os.path.exists(sound_file_path)
-if CHEER_SOUND_EXISTS:
-    initialization_status.append(("success", "✅ Cheer Sound Found"))
-else:
-    initialization_status.append(("warning", "⚠️ Cheer Sound Not Found"))
 
-# --- Functions ---
 def speak_text(text):
-    if TTS_ENABLED:
+    if TTS_ENABLED and tts_engine and text:
         try:
             tts_engine.stop()
             tts_engine.say(text)
@@ -63,11 +49,28 @@ def play_local_sound(file_path):
     except Exception as e:
         st.error(f"Error playing sound: {e}", icon="🔊")
 
-def recognize_speech_from_audiofile(audiofile):
+# Speech recognition using audio recorded from st.audio_input
+def recognize_speech_from_audio_input():
+    import speech_recognition as sr
+    r = sr.Recognizer()
+
+    audio_bytes = st.audio_input("🎤 Record your voice (max 5 seconds):", max_length=5)
+    if audio_bytes is None:
+        st.info("Please record your voice to continue.")
+        return None, "No audio input"
+
+    # Convert bytes to AudioSegment then to wav bytes for recognition
     try:
-        with sr.AudioFile(audiofile) as source:
-            audio_data = recognizer.record(source)
-        return recognizer.recognize_google(audio_data).lower(), None
+        audio_segment = AudioSegment.from_file(BytesIO(audio_bytes), format="webm")
+        wav_io = BytesIO()
+        audio_segment.export(wav_io, format="wav")
+        wav_io.seek(0)
+
+        with sr.AudioFile(wav_io) as source:
+            audio_data = r.record(source)
+
+        text = r.recognize_google(audio_data).lower()
+        return text, None
     except sr.UnknownValueError:
         return None, "Could not understand audio"
     except Exception as e:
@@ -99,7 +102,7 @@ def sounding_out_game():
 
     def new_word():
         st.session_state.current_word = random.choice(WORD_LIST_RST)
-        st.rerun()
+        st.experimental_rerun()
 
     word = st.session_state.current_word
     st.markdown(f"<h1 style='text-align:center'>{word}</h1>", unsafe_allow_html=True)
@@ -112,13 +115,10 @@ def sounding_out_game():
         if st.button("🔊 Hear Word"):
             speak_text(f"The word is {word}")
     with col3:
-        st.markdown("**🎤 Say the Word Below**")
-        audio_file = st.audio_input("Record yourself saying the word")
-        if audio_file:
-            st.audio(audio_file)
-            result, error = recognize_speech_from_audiofile(audio_file)
-            if result:
-                st.success(f"You said: {result}")
+        if st.button("🎤 Say the Word"):
+            spoken, error = recognize_speech_from_audio_input()
+            if spoken:
+                st.success(f"You said: {spoken}")
                 speak_text("Nice try!")
             else:
                 st.warning(f"Error: {error}")
@@ -130,11 +130,15 @@ def main():
     game_choice = st.sidebar.radio("Games:", ["Word Reader", "Sounding Out Words"])
 
     st.sidebar.write("---")
-    for status_type, message in initialization_status:
-        if status_type == "success":
-            st.sidebar.success(message)
-        elif status_type == "warning":
-            st.sidebar.warning(message)
+    if TTS_ENABLED:
+        st.sidebar.success("✅ Text-to-Speech Ready")
+    else:
+        st.sidebar.warning("⚠️ TTS Not Available")
+
+    if CHEER_SOUND_EXISTS:
+        st.sidebar.success("✅ Cheer Sound Found")
+    else:
+        st.sidebar.warning("⚠️ Cheer Sound Not Found")
 
     if game_choice == "Word Reader":
         word_reader_game()
