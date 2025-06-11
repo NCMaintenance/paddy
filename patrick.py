@@ -6,6 +6,12 @@ import streamlit as st
 import random
 import os
 import streamlit.components.v1 as components
+from pydub import AudioSegment
+from pydub.playback import play
+import os
+
+# Optional: set path if ffmpeg isn't auto-detected
+AudioSegment.converter = "/usr/bin/ffmpeg"  # Typical path on Streamlit Cloud
 
 # --- Configuration ---
 APP_TITLE = "Patrick's Fun Games!"
