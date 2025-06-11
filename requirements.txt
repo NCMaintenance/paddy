@@ -3,4 +3,4 @@ pyttsx3
 pydub
 SpeechRecognition
 ffmpeg
-
+espeak
