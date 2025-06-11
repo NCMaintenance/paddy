@@ -2,3 +2,4 @@ streamlit
 speechrecognition
 gtts
 pydub
+python-espeak
