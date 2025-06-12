@@ -44,7 +44,7 @@ def play_local_sound(file_path):
     except Exception as e:
         st.error(f"Error playing sound: {e}", icon="🔊")
 
-# ✅ New WebM-compatible speech recognizer (no pydub or ffmpeg)
+# WebM-compatible speech recognizer (no pydub or ffmpeg)
 def recognize_speech_from_audio_input():
     import speech_recognition as sr
     import av
@@ -83,14 +83,6 @@ def recognize_speech_from_audio_input():
     except Exception as e:
         return None, f"Recognition error: {e}"
 
-def word_reader_game():
-    st.header("Game 1: Word Reader")
-    st.write("Type a word and I will read it out loud.")
-    word = st.text_input("Enter a word:", key="word_input")
-    if word:
-        st.write(f"You entered: **{word}**")
-        speak_text(word)
-
 WORD_LIST_RST = [
     "star", "rust", "storm", "rest", "train", "start", "trust", "roast",
     "strap", "crust", "store", "street", "stir", "stone", "sport", "strike",
@@ -100,8 +92,8 @@ WORD_LIST_RST = [
 ]
 
 def sounding_out_game():
-    st.header("Game 3: Sounding Out Words")
-    st.write(f"Let's practice words with R, S, and T sounds!")
+    st.header("Sounding Out Words")
+    st.write("Let's practice words with R, S, and T sounds!")
     st.info("Listen to the word, then try saying it!", icon="🗣️")
 
     if 'current_word' not in st.session_state:
@@ -109,7 +101,7 @@ def sounding_out_game():
 
     def new_word():
         st.session_state.current_word = random.choice(WORD_LIST_RST)
-        st.experimental_rerun()
+        st.rerun()
 
     word = st.session_state.current_word
     st.markdown(f"<h1 style='text-align:center'>{word}</h1>", unsafe_allow_html=True)
@@ -134,7 +126,7 @@ def main():
     st.sidebar.title(APP_TITLE)
     st.sidebar.write(f"Hi {YOUR_NAME}! Choose a game:")
 
-    game_choice = st.sidebar.radio("Games:", ["Word Reader", "Sounding Out Words"])
+    game_choice = st.sidebar.radio("Games:", ["Sounding Out Words"])
 
     st.sidebar.write("---")
     if TTS_ENABLED:
@@ -147,10 +139,8 @@ def main():
     else:
         st.sidebar.warning("⚠️ Cheer Sound Not Found")
 
-    if game_choice == "Word Reader":
-        word_reader_game()
-    elif game_choice == "Sounding Out Words":
-        sounding_out_game()
+    # Only one game now
+    sounding_out_game()
 
 if __name__ == "__main__":
     main()
