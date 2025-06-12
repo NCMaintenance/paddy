@@ -1,12 +1,7 @@
-# kids_games.py - updated for st.audio_input
 import streamlit as st
 import random
 import os
-from pydub import AudioSegment
 from io import BytesIO
-
-# Optional: set path if ffmpeg isn't auto-detected
-AudioSegment.converter = "/usr/bin/ffmpeg"  # adjust if needed
 
 APP_TITLE = "Patrick's Speech Games!"
 YOUR_NAME = "Patrick"
@@ -49,9 +44,13 @@ def play_local_sound(file_path):
     except Exception as e:
         st.error(f"Error playing sound: {e}", icon="🔊")
 
-# Speech recognition using audio recorded from st.audio_input
+# ✅ New WebM-compatible speech recognizer (no pydub or ffmpeg)
 def recognize_speech_from_audio_input():
     import speech_recognition as sr
+    import av
+    import numpy as np
+    import soundfile as sf
+
     r = sr.Recognizer()
 
     audio_bytes = st.audio_input("🎤 Record your voice (max 5 seconds):", max_length=5)
@@ -59,11 +58,19 @@ def recognize_speech_from_audio_input():
         st.info("Please record your voice to continue.")
         return None, "No audio input"
 
-    # Convert bytes to AudioSegment then to wav bytes for recognition
     try:
-        audio_segment = AudioSegment.from_file(BytesIO(audio_bytes), format="webm")
+        container = av.open(BytesIO(audio_bytes))
+        audio_stream = container.streams.audio[0]
+
+        frames = []
+        for frame in container.decode(audio=0):
+            frames.append(frame.to_ndarray())
+
+        audio_array = np.concatenate(frames)
+        sample_rate = audio_stream.rate
+
         wav_io = BytesIO()
-        audio_segment.export(wav_io, format="wav")
+        sf.write(wav_io, audio_array, sample_rate, format='WAV')
         wav_io.seek(0)
 
         with sr.AudioFile(wav_io) as source:
@@ -74,7 +81,7 @@ def recognize_speech_from_audio_input():
     except sr.UnknownValueError:
         return None, "Could not understand audio"
     except Exception as e:
-        return None, str(e)
+        return None, f"Recognition error: {e}"
 
 def word_reader_game():
     st.header("Game 1: Word Reader")
