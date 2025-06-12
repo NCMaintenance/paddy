@@ -1,5 +1,6 @@
 streamlit
+pyttsx3
 speechrecognition
-gtts
-pydub
-ffmpeg-python
+av
+soundfile
+numpy
