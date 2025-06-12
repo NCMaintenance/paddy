@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import os
 from io import BytesIO
+from gtts import gTTS
 
 APP_TITLE = "Patrick's Speech Games!"
 YOUR_NAME = "Patrick"
@@ -9,29 +10,22 @@ CHEER_SOUND_FILENAME = "cheer.wav"
 
 st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# TTS setup
-TTS_ENABLED = False
-tts_engine = None
-try:
-    import pyttsx3
-    tts_engine = pyttsx3.init()
-    TTS_ENABLED = True
-except Exception:
-    pass
-
 sound_file_path = os.path.join(os.path.dirname(__file__), CHEER_SOUND_FILENAME)
 CHEER_SOUND_EXISTS = os.path.exists(sound_file_path)
 
 def speak_text(text):
-    if TTS_ENABLED and tts_engine and text:
-        try:
-            tts_engine.stop()
-            tts_engine.say(text)
-            tts_engine.runAndWait()
-            return True
-        except Exception:
-            return False
-    return False
+    if not text:
+        return False
+    try:
+        tts = gTTS(text)
+        mp3_fp = BytesIO()
+        tts.write_to_fp(mp3_fp)
+        mp3_fp.seek(0)
+        st.audio(mp3_fp.read(), format="audio/mp3", autoplay=True)
+        return True
+    except Exception as e:
+        st.error(f"TTS Error: {e}")
+        return False
 
 def play_local_sound(file_path):
     if not os.path.exists(file_path):
@@ -44,7 +38,6 @@ def play_local_sound(file_path):
     except Exception as e:
         st.error(f"Error playing sound: {e}", icon="🔊")
 
-# WebM-compatible speech recognizer using av + soundfile
 def recognize_from_audio(audio_bytes):
     import speech_recognition as sr
     import av
@@ -77,7 +70,6 @@ def recognize_from_audio(audio_bytes):
     except Exception as e:
         return None, f"Recognition error: {e}"
 
-# Word list
 WORD_LIST_RST = [
     "star", "rust", "storm", "rest", "train", "start", "trust", "roast",
     "strap", "crust", "store", "street", "stir", "stone", "sport", "strike",
@@ -86,7 +78,6 @@ WORD_LIST_RST = [
     "tree", "ranch", "track", "trunk", "ruler", "reader", "string", "ring"
 ]
 
-# Main UI
 def sounding_out_game(audio_bytes=None):
     st.header("Sounding Out Words")
     st.write("Let's practice words with R, S, and T sounds!")
@@ -97,7 +88,7 @@ def sounding_out_game(audio_bytes=None):
 
     def new_word():
         st.session_state.current_word = random.choice(WORD_LIST_RST)
-        st.rerun()
+        st.experimental_rerun()
 
     word = st.session_state.current_word
     st.markdown(f"<h1 style='text-align:center'>{word}</h1>", unsafe_allow_html=True)
@@ -118,26 +109,21 @@ def sounding_out_game(audio_bytes=None):
             else:
                 st.warning(f"Error: {error}")
         else:
-            st.caption("Use the audio input below and click a button again.")
+            st.caption("Record your voice above and click a button again.")
 
-# Sidebar + App selector
 def main():
     st.sidebar.title(APP_TITLE)
     st.sidebar.write(f"Hi {YOUR_NAME}! Choose a game:")
     game_choice = st.sidebar.radio("Games:", ["Sounding Out Words"])
 
     st.sidebar.write("---")
-    if TTS_ENABLED:
-        st.sidebar.success("✅ Text-to-Speech Ready")
-    else:
-        st.sidebar.warning("⚠️ TTS Not Available")
+    st.sidebar.success("✅ Text-to-Speech Ready")
 
     if CHEER_SOUND_EXISTS:
         st.sidebar.success("✅ Cheer Sound Found")
     else:
         st.sidebar.warning("⚠️ Cheer Sound Not Found")
 
-    # Always collect audio first, pass to game
     audio_bytes = st.audio_input("🎤 Record your voice (max 5 seconds):", max_length=5)
 
     if game_choice == "Sounding Out Words":
