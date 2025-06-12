@@ -44,21 +44,15 @@ def play_local_sound(file_path):
     except Exception as e:
         st.error(f"Error playing sound: {e}", icon="🔊")
 
-# WebM-compatible speech recognizer (no pydub or ffmpeg)
-def recognize_speech_from_audio_input():
+# WebM-compatible speech recognizer using av + soundfile
+def recognize_from_audio(audio_bytes):
     import speech_recognition as sr
     import av
     import numpy as np
     import soundfile as sf
 
-    r = sr.Recognizer()
-
-    audio_bytes = st.audio_input("🎤 Record your voice (max 5 seconds):", max_length=5)
-    if audio_bytes is None:
-        st.info("Please record your voice to continue.")
-        return None, "No audio input"
-
     try:
+        r = sr.Recognizer()
         container = av.open(BytesIO(audio_bytes))
         audio_stream = container.streams.audio[0]
 
@@ -83,6 +77,7 @@ def recognize_speech_from_audio_input():
     except Exception as e:
         return None, f"Recognition error: {e}"
 
+# Word list
 WORD_LIST_RST = [
     "star", "rust", "storm", "rest", "train", "start", "trust", "roast",
     "strap", "crust", "store", "street", "stir", "stone", "sport", "strike",
@@ -91,7 +86,8 @@ WORD_LIST_RST = [
     "tree", "ranch", "track", "trunk", "ruler", "reader", "string", "ring"
 ]
 
-def sounding_out_game():
+# Main UI
+def sounding_out_game(audio_bytes=None):
     st.header("Sounding Out Words")
     st.write("Let's practice words with R, S, and T sounds!")
     st.info("Listen to the word, then try saying it!", icon="🗣️")
@@ -114,18 +110,20 @@ def sounding_out_game():
         if st.button("🔊 Hear Word"):
             speak_text(f"The word is {word}")
     with col3:
-        if st.button("🎤 Say the Word"):
-            spoken, error = recognize_speech_from_audio_input()
+        if audio_bytes:
+            spoken, error = recognize_from_audio(audio_bytes)
             if spoken:
                 st.success(f"You said: {spoken}")
                 speak_text("Nice try!")
             else:
                 st.warning(f"Error: {error}")
+        else:
+            st.caption("Use the audio input below and click a button again.")
 
+# Sidebar + App selector
 def main():
     st.sidebar.title(APP_TITLE)
     st.sidebar.write(f"Hi {YOUR_NAME}! Choose a game:")
-
     game_choice = st.sidebar.radio("Games:", ["Sounding Out Words"])
 
     st.sidebar.write("---")
@@ -139,8 +137,11 @@ def main():
     else:
         st.sidebar.warning("⚠️ Cheer Sound Not Found")
 
-    # Only one game now
-    sounding_out_game()
+    # Always collect audio first, pass to game
+    audio_bytes = st.audio_input("🎤 Record your voice (max 5 seconds):", max_length=5)
+
+    if game_choice == "Sounding Out Words":
+        sounding_out_game(audio_bytes)
 
 if __name__ == "__main__":
     main()
